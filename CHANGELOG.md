@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python project template
 - Example: complete Payment Service
 
+## [0.3.2] - 2026-11-15
+
+### Changed
+- The Flow calls `IdGeneratorProtocol` directly and passes the id to the Adapter: generating an id is not IO, so the `generate_user_id` Gateway was removed
+- Rule clarified: Gateways are the only layer that does IO through Protocols; randomness and time Protocols are called by the Flow
+
 ## [0.3.1] - 2026-11-15
 
 ### Changed
@@ -85,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handlers without business logic
 - Protocol-based dependency injection
 
-[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/manoanzi/tag/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/manoanzi/tag/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/manoanzi/tag/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/manoanzi/tag/compare/v0.1.2...v0.2.0

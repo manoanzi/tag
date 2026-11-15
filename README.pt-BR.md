@@ -54,7 +54,7 @@ cd examples/user-service && pip install -e ".[dev]" && pytest && python -m src.m
 | 6 | Flows são pipelines de orquestração | Um Flow por caso de uso, da entrada bruta ao schema de resposta, compondo Gateways, Logics e Adapters. O log de negócio fica aqui |
 | 7 | Handlers só repassam | Entregam a entrada do transporte a um Flow e devolvem o schema de resposta dele. Nada mais |
 | 8 | Drivers implementam Protocols | Bibliotecas externas ficam fora do código de domínio |
-| 9 | Efeitos colaterais nas bordas | IO, aleatoriedade e tempo vêm de Protocols (ex.: `IdGeneratorProtocol`), acessados por Gateways |
+| 9 | Efeitos colaterais nas bordas | IO passa por Gateways. Aleatoriedade e tempo vêm de Protocols (ex.: `IdGeneratorProtocol`) que o Flow chama direto, entregando o valor a um Adapter |
 
 Nomes: contratos são `<Capacidade>Protocol` (`DatabaseProtocol`, `LoggerProtocol`) e suas implementações são `<Tecnologia>Driver` (`SQLiteDriver`, `UUID4Driver`).
 
@@ -92,7 +92,7 @@ project-root/
 | Protocols, Domains, Resources | nenhuma |
 | Logics | Domains, Resources |
 | Adapters | Domains, Protocols (só tipos), Resources |
-| Gateways | Protocols (única camada que os chama), Domains, Adapters, Resources |
+| Gateways | Protocols (única camada que faz IO por eles), Domains, Adapters, Resources |
 | Flows | Gateways, Logics, Adapters, Protocols, Resources |
 | Handlers | Flows, Protocols |
 | Drivers | Protocols, Resources |
@@ -113,8 +113,7 @@ def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
             to_rule_result(check_email_domain(data.email)),                      # Logic + Adapter
             bind(lambda _: find_users_by_email(db, data.email)),                 # Gateway (IO)
             bind(lambda existing: to_rule_result(check_user_is_new(existing))),  # Logic + Adapter
-            bind(lambda _: generate_user_id(ids)),                               # Gateway (randomness)
-            map_(lambda user_id: to_user_domain(data, user_id)),                 # Adapter
+            map_(lambda _: to_user_domain(data, ids.new_id())),                  # Protocol (randomness) + Adapter
             map_(to_user_record),                                                # Adapter
             bind(lambda record: persist_user(db, record)),                       # Gateway (IO)
             map_(to_create_user_output),                                         # Adapter
@@ -125,7 +124,7 @@ def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
     return to_create_user_response(status, result)                               # Adapter
 ```
 
-O Flow depende só de Protocols. Até o id do usuário vem do `IdGeneratorProtocol`, então todo Adapter e toda Logic continuam puros e os testes são determinísticos. O [exemplo executável](examples/user-service) injeta Drivers de SQLite e UUIDv4; os testes injetam um banco em memória e um id fixo.
+O Flow depende só de Protocols. Até o id do usuário vem do `IdGeneratorProtocol`: gerar o id não é IO, então o Flow chama direto e entrega o valor ao Adapter. Todo Adapter e toda Logic continuam puros e os testes são determinísticos. O [exemplo executável](examples/user-service) injeta Drivers de SQLite e UUIDv4; os testes injetam um banco em memória e um id fixo.
 
 O Handler só repassa: o Flow é dono do caso de uso inteiro, inclusive do log de negócio e do schema de resposta. Logics nunca constroem `Result`; elas devolvem decisões como schemas, e um Adapter as transforma em passos do pipeline.
 

@@ -15,7 +15,7 @@ from src.adapters.user_adapter import (
 )
 from src.domains.user import CreateUserResponse
 from src.gateways.log_gateway import write_log
-from src.gateways.user_gateway import find_users_by_email, generate_user_id, persist_user
+from src.gateways.user_gateway import find_users_by_email, persist_user
 from src.logics.user_logic import check_email_domain, check_user_is_new, resolve_create_user_status
 from src.protocols.database import DatabaseProtocol
 from src.protocols.id_generator import IdGeneratorProtocol
@@ -30,8 +30,7 @@ def create_user_flow(
             to_rule_result(check_email_domain(data.email)),  # Logic + Adapter
             bind(lambda _: find_users_by_email(db, data.email)),  # Gateway (IO)
             bind(lambda existing: to_rule_result(check_user_is_new(existing))),  # Logic + Adapter
-            bind(lambda _: generate_user_id(ids)),  # Gateway (randomness)
-            map_(lambda user_id: to_user_domain(data, user_id)),  # Adapter
+            map_(lambda _: to_user_domain(data, ids.new_id())),  # Protocol (randomness) + Adapter
             map_(to_user_record),  # Adapter
             bind(lambda record: persist_user(db, record)),  # Gateway (IO)
             map_(to_create_user_output),  # Adapter
