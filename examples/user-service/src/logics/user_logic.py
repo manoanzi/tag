@@ -1,5 +1,14 @@
 from src.domains.user import CreateUserOutcome, UserError, UserRecord, UserRuleCheck
-from src.resources.user_rules import BLOCKED_EMAIL_DOMAINS, CREATE_USER_HTTP_STATUS
+from src.resources.user_rules import BLOCKED_EMAIL_DOMAINS
+
+# A decision table, not configuration: it never changes between environments.
+HTTP_STATUS_BY_OUTCOME: dict[UserError | None, int] = {
+    None: 201,
+    UserError.INVALID_PAYLOAD: 422,
+    UserError.EMAIL_DOMAIN_NOT_ALLOWED: 422,
+    UserError.USER_ALREADY_EXISTS: 409,
+    UserError.STORAGE_FAILURE: 500,
+}
 
 
 def check_email_domain(email: str) -> UserRuleCheck:
@@ -16,6 +25,4 @@ def check_user_is_new(existing: list[UserRecord]) -> UserRuleCheck:
 
 
 def resolve_create_user_status(outcome: CreateUserOutcome) -> int:
-    if outcome.error is None:
-        return CREATE_USER_HTTP_STATUS["created"]
-    return CREATE_USER_HTTP_STATUS[outcome.error]
+    return HTTP_STATUS_BY_OUTCOME[outcome.error]

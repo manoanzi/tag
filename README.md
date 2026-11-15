@@ -62,7 +62,7 @@ More rules:
 - **Logs:** business events ("user created", "duplicate e-mail") are written by the Flow: an Adapter builds the `LogEntry` and a Gateway writes it. Transport logs (route, latency, HTTP status) belong to the Driver.
 - **Private functions in a Flow** may only compose layers. They never hold a rule, a conversion or IO of their own.
 - **Contract types** (such as `LogEntry`) live with their Protocol, not in Domains.
-- **Static data** (lists, maps, thresholds, messages) lives in Resources, preferably as config files (JSON/YAML). Logics read it; they never hardcode it.
+- **Resources hold configuration only:** values that may change per environment or client without a code change (blocklists, public messages, limits), preferably as JSON/YAML files (12-Factor, factor III). Queries, schemas and decision tables are code: they live next to whoever uses them (Locality of Behavior). SQL goes in the Gateway that runs it, decision tables in the Logic that decides, and DDL in `migrations/`.
 
 ## Directory structure
 
@@ -71,7 +71,7 @@ project-root/
 ├── src/
 │   ├── protocols/   # infrastructure contracts (typing.Protocol)
 │   ├── domains/     # entities and value objects (Pydantic)
-│   ├── resources/   # settings, queries, static config files (JSON/YAML)
+│   ├── resources/   # configuration: settings and JSON/YAML files
 │   ├── logics/      # pure domain functions
 │   ├── adapters/    # data transformations between layers
 │   ├── gateways/    # IO through Protocols
@@ -79,6 +79,7 @@ project-root/
 │   ├── handlers/    # entry points (HTTP, Kafka, cron, agent tools)
 │   └── main.py      # composition root
 ├── drivers/         # library implementations, outside src/
+├── migrations/      # database schema (.sql), applied by the database Driver
 └── tests/
     ├── unit/        # Adapters and Logics
     └── integration/ # Flows with in-memory Protocols

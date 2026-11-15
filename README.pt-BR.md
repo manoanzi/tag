@@ -62,7 +62,7 @@ Outras regras:
 - **Logs:** eventos de negócio ("usuário criado", "e-mail duplicado") são gravados pelo Flow: um Adapter monta o `LogEntry` e um Gateway grava. Logs de transporte (rota, latência, status HTTP) ficam no Driver.
 - **Funções privadas num Flow** só podem compor camadas. Nunca contêm regra, conversão ou IO próprios.
 - **Tipos de contrato** (como `LogEntry`) ficam junto do seu Protocol, não em Domains.
-- **Dados estáticos** (listas, mapas, limites, mensagens) ficam em Resources, de preferência como arquivos de configuração (JSON/YAML). Logics leem esses dados; nunca os deixam fixos no código.
+- **Resources guardam só configuração:** valores que podem mudar por ambiente ou cliente sem mudar código (listas de bloqueio, mensagens públicas, limites), de preferência em arquivos JSON/YAML (12-Factor, fator III). Queries, esquemas e tabelas de decisão são código: ficam junto de quem os usa (Locality of Behavior). SQL fica no Gateway que o executa, tabelas de decisão na Logic que decide, e DDL em `migrations/`.
 
 ## Estrutura de diretórios
 
@@ -71,7 +71,7 @@ project-root/
 ├── src/
 │   ├── protocols/   # contratos de infraestrutura (typing.Protocol)
 │   ├── domains/     # entidades e objetos de valor (Pydantic)
-│   ├── resources/   # configs, queries, arquivos de configuração estáticos (JSON/YAML)
+│   ├── resources/   # configuração: settings e arquivos JSON/YAML
 │   ├── logics/      # funções puras de domínio
 │   ├── adapters/    # transformações de dados entre camadas
 │   ├── gateways/    # IO via Protocols
@@ -79,6 +79,7 @@ project-root/
 │   ├── handlers/    # pontos de entrada (HTTP, Kafka, cron, tools de agente)
 │   └── main.py      # composição
 ├── drivers/         # implementações de bibliotecas, fora do src/
+├── migrations/      # esquema do banco (.sql), aplicado pelo Driver de banco
 └── tests/
     ├── unit/        # Adapters e Logics
     └── integration/ # Flows com Protocols em memória

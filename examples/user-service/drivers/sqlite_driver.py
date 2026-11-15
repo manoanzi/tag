@@ -1,10 +1,12 @@
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from returns.result import ResultE, safe
 
 from src.resources.settings import Settings
-from src.resources.user_queries import CREATE_USERS_TABLE
+
+MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
 
 class SQLiteDriver:
@@ -13,7 +15,8 @@ class SQLiteDriver:
     def __init__(self, settings: Settings) -> None:
         self._conn = sqlite3.connect(settings.database_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
-        self._conn.execute(CREATE_USERS_TABLE)
+        for migration in sorted(MIGRATIONS_DIR.glob("*.sql")):
+            self._conn.executescript(migration.read_text())
 
     def execute(self, query: str, params: dict[str, Any]) -> ResultE[list[dict[str, Any]]]:
         return self._execute(query, params)

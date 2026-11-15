@@ -1,7 +1,0 @@
-{
-  "created": 201,
-  "invalid_payload": 422,
-  "email_domain_not_allowed": 422,
-  "user_already_exists": 409,
-  "storage_failure": 500
-}

@@ -6,7 +6,16 @@ from src.adapters.user_adapter import to_query_params, to_storage_error, to_user
 from src.domains.user import User, UserError, UserRecord
 from src.protocols.database import DatabaseProtocol
 from src.protocols.id_generator import IdGeneratorProtocol
-from src.resources.user_queries import FIND_USERS_BY_EMAIL, INSERT_USER
+
+FIND_USERS_BY_EMAIL = """
+    SELECT id, email, name FROM users WHERE email = :email
+"""
+
+INSERT_USER = """
+    INSERT INTO users (id, email, name)
+    VALUES (:id, :email, :name)
+    RETURNING id, email, name
+"""
 
 
 def find_users_by_email(db: DatabaseProtocol, email: str) -> Result[list[UserRecord], UserError]:
