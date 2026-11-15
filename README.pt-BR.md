@@ -2,6 +2,7 @@
 
 **Um padrão de arquitetura pragmático, funcional e centrado em domínio para microsserviços em Python, incluindo serviços agênticos (LLM).**
 
+[![CI](https://github.com/manoanzi/tag/actions/workflows/ci.yml/badge.svg)](https://github.com/manoanzi/tag/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
