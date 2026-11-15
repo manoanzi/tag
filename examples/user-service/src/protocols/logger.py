@@ -1,6 +1,13 @@
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol, TypedDict
+
+
+class LogEntry(TypedDict):
+    """What the LoggerProtocol accepts: part of the contract, not of the domain."""
+
+    level: Literal["info", "error"]
+    message: str
+    context: dict[str, Any]
 
 
 class LoggerProtocol(Protocol):
-    def info(self, message: str, **context: Any) -> None: ...
-    def error(self, message: str, **context: Any) -> None: ...
+    def log(self, entry: LogEntry) -> None: ...

@@ -1,0 +1,6 @@
+{
+  "invalid_payload": "Invalid payload",
+  "email_domain_not_allowed": "Email domain not allowed",
+  "user_already_exists": "A user with this email already exists",
+  "storage_failure": "Could not access user storage"
+}

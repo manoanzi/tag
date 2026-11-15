@@ -3,6 +3,8 @@ from uuid import UUID
 
 from returns.result import Failure, ResultE, Success
 
+from src.protocols.logger import LogEntry
+
 
 class FakeDatabase:
     """In-memory implementation of the DatabaseProtocol."""
@@ -30,3 +32,13 @@ class FixedIdGenerator:
 
     def new_id(self) -> UUID:
         return self.value
+
+
+class FakeLogger:
+    """In-memory implementation of the LoggerProtocol."""
+
+    def __init__(self) -> None:
+        self.entries: list[LogEntry] = []
+
+    def log(self, entry: LogEntry) -> None:
+        self.entries.append(entry)

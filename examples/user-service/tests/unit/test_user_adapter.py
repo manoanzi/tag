@@ -5,14 +5,17 @@ from returns.result import Failure, Success
 from src.adapters.user_adapter import (
     to_create_user_input,
     to_create_user_output,
-    to_create_user_response_body,
+    to_create_user_log_entry,
+    to_create_user_outcome,
+    to_create_user_response,
     to_query_params,
+    to_rule_result,
     to_storage_error,
     to_user_domain,
     to_user_from_rows,
     to_user_record,
 )
-from src.domains.user import CreateUserInput, User, UserError
+from src.domains.user import CreateUserInput, CreateUserOutcome, CreateUserResponse, User, UserError, UserRuleCheck
 
 USER_ID = UUID("12345678-1234-5678-1234-567812345678")
 USER = User(id=USER_ID, email="ana@gmail.com", name="Ana")
@@ -45,10 +48,35 @@ def test_storage_exception_becomes_domain_error():
     assert to_storage_error(RuntimeError("disk full")) == UserError.STORAGE_FAILURE
 
 
-def test_response_body_on_success_and_failure():
+def test_response_on_success_and_failure():
     output = to_create_user_output(USER)
-    assert to_create_user_response_body(Success(output)) == output.model_dump()
-    assert to_create_user_response_body(Failure(UserError.USER_ALREADY_EXISTS)) == {
-        "error": "user_already_exists",
-        "message": "A user with this email already exists",
+    assert to_create_user_response(201, Success(output)) == CreateUserResponse(status=201, body=output.model_dump())
+    assert to_create_user_response(409, Failure(UserError.USER_ALREADY_EXISTS)) == CreateUserResponse(
+        status=409,
+        body={"error": "user_already_exists", "message": "A user with this email already exists"},
+    )
+
+
+def test_log_entry_on_success_and_failure():
+    output = to_create_user_output(USER)
+    assert to_create_user_log_entry(Success(output)) == {
+        "level": "info",
+        "message": "user created",
+        "context": {"user_id": str(USER_ID)},
     }
+    assert to_create_user_log_entry(Failure(UserError.INVALID_PAYLOAD)) == {
+        "level": "error",
+        "message": "could not create user",
+        "context": {"error": "invalid_payload"},
+    }
+
+
+def test_rule_check_becomes_pipeline_step():
+    assert to_rule_result(UserRuleCheck()) == Success(None)
+    assert to_rule_result(UserRuleCheck(error=UserError.USER_ALREADY_EXISTS)) == Failure(UserError.USER_ALREADY_EXISTS)
+
+
+def test_result_becomes_outcome_schema():
+    output = to_create_user_output(USER)
+    assert to_create_user_outcome(Success(output)) == CreateUserOutcome(output=output)
+    assert to_create_user_outcome(Failure(UserError.STORAGE_FAILURE)) == CreateUserOutcome(error=UserError.STORAGE_FAILURE)

@@ -16,8 +16,8 @@ class FastAPIDriver:
     def post(self, path: str, handler: Handler) -> None:
         async def route(request: Request) -> JSONResponse:
             body: Any = await request.json()
-            status, payload = handler(body if isinstance(body, dict) else {})
-            return JSONResponse(status_code=status, content=payload)
+            response = handler(body if isinstance(body, dict) else {})
+            return JSONResponse(status_code=response.status, content=response.body)
 
         self.app.add_api_route(path, route, methods=["POST"])
 

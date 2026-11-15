@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python project template
 - Example: complete Payment Service
 
+## [0.3.0] - 2026-11-15
+
+### Changed
+- **BREAKING:** Handlers only forward the request to a Flow and return its response schema (`CreateUserResponse`), never a tuple
+- **BREAKING:** `LoggerProtocol` has a single `log(entry: LogEntry)` method; `LogEntry` is part of the Protocol contract, not of the domain
+- Flows own the whole use case: they start from the raw input and write the business log through an Adapter and the `write_log` Gateway
+- Logics never build `Result`: decisions come back as schemas (`UserRuleCheck`, `CreateUserOutcome`) and Adapters turn them into pipeline steps
+- Static data (blocked e-mail domains, HTTP status per outcome, error messages) moved to JSON files in Resources; `UserError` values are now codes
+- Documented rules: transport logs belong to Drivers, and private functions in a Flow may only compose layers
+
 ## [0.2.0] - 2026-11-15
 
 ### Changed
@@ -67,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handlers without business logic
 - Protocol-based dependency injection
 
-[Unreleased]: https://github.com/manoanzi/tag/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/manoanzi/tag/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/manoanzi/tag/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/manoanzi/tag/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/manoanzi/tag/compare/v0.1.0...v0.1.1

@@ -1,30 +1,21 @@
-from returns.result import Failure, Result, Success
-
-from src.domains.user import CreateUserOutput, UserError, UserRecord
-
-BLOCKED_EMAIL_DOMAINS = frozenset({"tempmail.com", "disposable.com", "throwaway.email"})
-
-HTTP_STATUS_BY_ERROR: dict[UserError, int] = {
-    UserError.INVALID_PAYLOAD: 422,
-    UserError.EMAIL_DOMAIN_NOT_ALLOWED: 422,
-    UserError.USER_ALREADY_EXISTS: 409,
-    UserError.STORAGE_FAILURE: 500,
-}
+from src.domains.user import CreateUserOutcome, UserError, UserRecord, UserRuleCheck
+from src.resources.user_rules import BLOCKED_EMAIL_DOMAINS, CREATE_USER_HTTP_STATUS
 
 
-def validate_email_domain(email: str) -> Result[str, UserError]:
+def check_email_domain(email: str) -> UserRuleCheck:
     domain = email.split("@")[-1].lower()
     if domain in BLOCKED_EMAIL_DOMAINS:
-        return Failure(UserError.EMAIL_DOMAIN_NOT_ALLOWED)
-    return Success(email)
+        return UserRuleCheck(error=UserError.EMAIL_DOMAIN_NOT_ALLOWED)
+    return UserRuleCheck()
 
 
-def ensure_user_not_exists(existing: list[UserRecord]) -> Result[None, UserError]:
+def check_user_is_new(existing: list[UserRecord]) -> UserRuleCheck:
     if existing:
-        return Failure(UserError.USER_ALREADY_EXISTS)
-    return Success(None)
+        return UserRuleCheck(error=UserError.USER_ALREADY_EXISTS)
+    return UserRuleCheck()
 
 
-def resolve_create_user_status(result: Result[CreateUserOutput, UserError]) -> int:
-    """Decides the HTTP status of the use case: 201 on success, mapped status on failure."""
-    return result.map(lambda _: 201).lash(lambda error: Success(HTTP_STATUS_BY_ERROR[error])).unwrap()
+def resolve_create_user_status(outcome: CreateUserOutcome) -> int:
+    if outcome.error is None:
+        return CREATE_USER_HTTP_STATUS["created"]
+    return CREATE_USER_HTTP_STATUS[outcome.error]

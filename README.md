@@ -48,15 +48,21 @@ cd examples/user-service && pip install -e ".[dev]" && pytest && python -m src.m
 |---|---|---|
 | 1 | Protocols define contracts | Every infrastructure dependency sits behind a `typing.Protocol` |
 | 2 | Domains are schemas, never functions | Immutable data definitions (Pydantic, `frozen=True`) |
-| 3 | Logics are pure and hold the decisions | No IO, no randomness, no clock. Every rule and branch (validation, status mapping) lives here |
-| 4 | Adapters transform structures | Pure conversions between layers, including `model_dump`, rows and errors. No `uuid4()` or `now()` |
+| 3 | Logics are pure and hold the decisions | No IO, randomness, clock or `Result`. Every rule and branch lives here, and the decision comes back as a domain schema (e.g. `UserRuleCheck`) |
+| 4 | Adapters transform structures | Pure conversions between layers: `model_dump`, rows, errors, log entries, responses, and schemas to `Result` (`Success`/`Failure`). No `uuid4()` or `now()` |
 | 5 | Gateways do IO | All external communication, through Protocols received as parameters |
-| 6 | Flows are orchestration pipelines | One Flow per use case, composing Gateways, Logics and Adapters |
-| 7 | Handlers connect transport to Flows | They chain Adapter → Flow → Logic with no `if` or `match` |
+| 6 | Flows are orchestration pipelines | One Flow per use case, from raw input to the response schema, composing Gateways, Logics and Adapters. Business logs belong here |
+| 7 | Handlers only forward | They pass the transport input to a Flow and return its response schema. Nothing else |
 | 8 | Drivers implement Protocols | External libraries live outside the domain code |
 | 9 | Side effects at the edges | IO, randomness and time come from Protocols (e.g. `IdGeneratorProtocol`), reached through Gateways |
 
 Naming: contracts are `<Capability>Protocol` (`DatabaseProtocol`, `LoggerProtocol`) and their implementations are `<Technology>Driver` (`SQLiteDriver`, `UUID4Driver`).
+
+More rules:
+- **Logs:** business events ("user created", "duplicate e-mail") are written by the Flow: an Adapter builds the `LogEntry` and a Gateway writes it. Transport logs (route, latency, HTTP status) belong to the Driver.
+- **Private functions in a Flow** may only compose layers. They never hold a rule, a conversion or IO of their own.
+- **Contract types** (such as `LogEntry`) live with their Protocol, not in Domains.
+- **Static data** (lists, maps, thresholds, messages) lives in Resources, preferably as config files (JSON/YAML). Logics read it; they never hardcode it.
 
 ## Directory structure
 
@@ -65,7 +71,7 @@ project-root/
 ├── src/
 │   ├── protocols/   # infrastructure contracts (typing.Protocol)
 │   ├── domains/     # entities and value objects (Pydantic)
-│   ├── resources/   # settings, queries, static schemas
+│   ├── resources/   # settings, queries, static config files (JSON/YAML)
 │   ├── logics/      # pure domain functions
 │   ├── adapters/    # data transformations between layers
 │   ├── gateways/    # IO through Protocols
@@ -83,48 +89,61 @@ project-root/
 | Layer | May call |
 |---|---|
 | Protocols, Domains, Resources | nothing |
-| Logics, Adapters | Domains |
-| Gateways | Protocols, Domains, Adapters, Resources |
+| Logics | Domains, Resources |
+| Adapters | Domains, Protocols (types only), Resources |
+| Gateways | Protocols (the only layer that calls them), Domains, Adapters, Resources |
 | Flows | Gateways, Logics, Adapters, Protocols, Resources |
-| Handlers | Adapters, Flows, Logics, Protocols, Resources |
+| Handlers | Flows, Protocols |
 | Drivers | Protocols, Resources |
 | `main.py` | Drivers, Handlers, Resources |
 
 ```
-Request → Driver → Handler → Adapter → Flow → Gateway → Protocol (IO)
-                                          ↘ Logic (pure)
-Response ← Driver ← Handler ← Result ←────┘
+Request  → Driver → Handler → Flow → Adapter / Logic / Gateway → Protocol (IO)
+Response ← Driver ← Handler ← Flow (response schema)
 ```
 
 ## Example: a use case as a Flow
 
 ```python
 # src/flows/user/create_user_flow.py
-def create_user_flow(
-    db: DatabaseProtocol, ids: IdGeneratorProtocol, data: CreateUserInput
-) -> Result[CreateUserOutput, UserError]:
-    return flow(
-        validate_email_domain(data.email),                       # Logic (pure)
-        bind(lambda email: find_users_by_email(db, email)),      # Gateway (IO)
-        bind(ensure_user_not_exists),                            # Logic (pure)
-        bind(lambda _: generate_user_id(ids)),                   # Gateway (randomness)
-        map_(lambda user_id: to_user_domain(data, user_id)),     # Adapter
-        map_(to_user_record),                                    # Adapter
-        bind(lambda record: persist_user(db, record)),           # Gateway (IO)
-        map_(to_create_user_output),                             # Adapter
+def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
+    result = to_create_user_input(raw).bind(                                     # Adapter
+        lambda data: flow(
+            to_rule_result(check_email_domain(data.email)),                      # Logic + Adapter
+            bind(lambda _: find_users_by_email(db, data.email)),                 # Gateway (IO)
+            bind(lambda existing: to_rule_result(check_user_is_new(existing))),  # Logic + Adapter
+            bind(lambda _: generate_user_id(ids)),                               # Gateway (randomness)
+            map_(lambda user_id: to_user_domain(data, user_id)),                 # Adapter
+            map_(to_user_record),                                                # Adapter
+            bind(lambda record: persist_user(db, record)),                       # Gateway (IO)
+            map_(to_create_user_output),                                         # Adapter
+        )
     )
+    write_log(logger, to_create_user_log_entry(result))                          # Adapter + Gateway (IO)
+    status = resolve_create_user_status(to_create_user_outcome(result))          # Adapter + Logic
+    return to_create_user_response(status, result)                               # Adapter
 ```
 
 The Flow depends only on Protocols. Even the user id comes from `IdGeneratorProtocol`, so every Adapter and Logic stays pure and tests are deterministic. The [runnable example](examples/user-service) injects SQLite and UUIDv4 Drivers; tests inject an in-memory database and a fixed id.
 
-The Handler has no branching: the decision about the response belongs to a Logic, and the response body is built by an Adapter.
+The Handler only forwards: the Flow owns the whole use case, including the business log and the response schema. Logics never build a `Result`; they return decisions as schemas, and an Adapter turns them into pipeline steps.
 
 ```python
-# src/handlers/user_handlers.py: no if, no match
-def handle_create_user(db, ids, logger, raw_body) -> tuple[int, dict]:
-    result = to_create_user_input(raw_body).bind(lambda data: create_user_flow(db, ids, data))
-    result.alt(tap(lambda error: logger.error("could not create user", error=error.name)))
-    return resolve_create_user_status(result), to_create_user_response_body(result)  # Logic, Adapter
+# src/logics/user_logic.py: decisions as data, never Result
+def check_user_is_new(existing: list[UserRecord]) -> UserRuleCheck:
+    if existing:
+        return UserRuleCheck(error=UserError.USER_ALREADY_EXISTS)
+    return UserRuleCheck()
+
+# src/adapters/user_adapter.py: the bridge from schema to Result
+def to_rule_result(check: UserRuleCheck) -> Result[None, UserError]:
+    return Maybe.from_optional(check.error).map(Failure).value_or(Success(None))
+```
+
+```python
+# src/handlers/user_handlers.py: only forwards
+def handle_create_user(db, ids, logger, raw_body: dict) -> CreateUserResponse:
+    return create_user_flow(db, ids, logger, raw_body)
 ```
 
 ```python

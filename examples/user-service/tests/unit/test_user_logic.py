@@ -1,33 +1,46 @@
-from returns.result import Failure, Success
-
-from src.domains.user import CreateUserOutput, UserError, UserRecord
-from src.logics.user_logic import ensure_user_not_exists, resolve_create_user_status, validate_email_domain
+from src.domains.user import CreateUserOutcome, CreateUserOutput, UserError, UserRecord, UserRuleCheck
+from src.logics.user_logic import check_email_domain, check_user_is_new, resolve_create_user_status
 
 
 def test_accepts_allowed_domain():
-    assert validate_email_domain("ana@gmail.com") == Success("ana@gmail.com")
+    assert check_email_domain("ana@gmail.com") == UserRuleCheck()
 
 
 def test_rejects_blocked_domain():
-    assert validate_email_domain("ana@tempmail.com") == Failure(UserError.EMAIL_DOMAIN_NOT_ALLOWED)
+    assert check_email_domain("ana@tempmail.com") == UserRuleCheck(error=UserError.EMAIL_DOMAIN_NOT_ALLOWED)
 
 
-def test_user_does_not_exist_when_no_records():
-    assert ensure_user_not_exists([]) == Success(None)
+def test_user_is_new_when_no_records():
+    assert check_user_is_new([]) == UserRuleCheck()
 
 
-def test_user_exists_when_records_found():
+def test_user_is_not_new_when_records_found():
     record = UserRecord(id="1", email="ana@gmail.com", name="Ana")
-    assert ensure_user_not_exists([record]) == Failure(UserError.USER_ALREADY_EXISTS)
+    assert check_user_is_new([record]) == UserRuleCheck(error=UserError.USER_ALREADY_EXISTS)
 
 
 def test_status_is_201_on_success():
     output = CreateUserOutput(id="1", email="ana@gmail.com", name="Ana")
-    assert resolve_create_user_status(Success(output)) == 201
+    assert resolve_create_user_status(CreateUserOutcome(output=output)) == 201
 
 
 def test_status_maps_each_error():
-    assert resolve_create_user_status(Failure(UserError.INVALID_PAYLOAD)) == 422
-    assert resolve_create_user_status(Failure(UserError.EMAIL_DOMAIN_NOT_ALLOWED)) == 422
-    assert resolve_create_user_status(Failure(UserError.USER_ALREADY_EXISTS)) == 409
-    assert resolve_create_user_status(Failure(UserError.STORAGE_FAILURE)) == 500
+    expected = {
+        UserError.INVALID_PAYLOAD: 422,
+        UserError.EMAIL_DOMAIN_NOT_ALLOWED: 422,
+        UserError.USER_ALREADY_EXISTS: 409,
+        UserError.STORAGE_FAILURE: 500,
+    }
+    for error, status in expected.items():
+        assert resolve_create_user_status(CreateUserOutcome(error=error)) == status
+
+
+def test_every_error_has_a_configured_status():
+    for error in UserError:
+        assert isinstance(resolve_create_user_status(CreateUserOutcome(error=error)), int)
+
+
+def test_every_error_has_a_configured_message():
+    from src.resources.user_rules import USER_ERROR_MESSAGES
+
+    assert set(USER_ERROR_MESSAGES) == {error.value for error in UserError}

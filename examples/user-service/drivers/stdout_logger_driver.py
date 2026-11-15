@@ -1,16 +1,12 @@
 import json
 import sys
-from typing import Any
+
+from src.protocols.logger import LogEntry
 
 
 class StdoutLoggerDriver:
     """Implements the LoggerProtocol with JSON lines on stdout."""
 
-    def info(self, message: str, **context: Any) -> None:
-        self._write("info", message, context)
-
-    def error(self, message: str, **context: Any) -> None:
-        self._write("error", message, context)
-
-    def _write(self, level: str, message: str, context: dict[str, Any]) -> None:
-        print(json.dumps({"level": level, "message": message, **context}, default=str), file=sys.stdout)
+    def log(self, entry: LogEntry) -> None:
+        line = {"level": entry["level"], "message": entry["message"], **entry["context"]}
+        print(json.dumps(line, default=str), file=sys.stdout)

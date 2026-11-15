@@ -1,17 +1,26 @@
 from enum import StrEnum
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserError(StrEnum):
-    """Every way the use case can fail. The value is the public message."""
+    """Every way the use case can fail. Public messages live in Resources."""
 
-    INVALID_PAYLOAD = "Invalid payload"
-    EMAIL_DOMAIN_NOT_ALLOWED = "Email domain not allowed"
-    USER_ALREADY_EXISTS = "A user with this email already exists"
-    STORAGE_FAILURE = "Could not access user storage"
+    INVALID_PAYLOAD = "invalid_payload"
+    EMAIL_DOMAIN_NOT_ALLOWED = "email_domain_not_allowed"
+    USER_ALREADY_EXISTS = "user_already_exists"
+    STORAGE_FAILURE = "storage_failure"
 
+
+
+class UserRuleCheck(BaseModel):
+    """A business rule decision as data: no error means the rule passed."""
+
+    model_config = ConfigDict(frozen=True)
+
+    error: UserError | None = None
 
 class User(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -44,3 +53,21 @@ class CreateUserOutput(BaseModel):
     id: str
     email: str
     name: str
+
+
+class CreateUserResponse(BaseModel):
+    """What the create-user use case answers to any transport."""
+
+    model_config = ConfigDict(frozen=True)
+
+    status: int
+    body: dict[str, Any]
+
+
+class CreateUserOutcome(BaseModel):
+    """The end state of the use case, as data: either an output or an error."""
+
+    model_config = ConfigDict(frozen=True)
+
+    output: CreateUserOutput | None = None
+    error: UserError | None = None
