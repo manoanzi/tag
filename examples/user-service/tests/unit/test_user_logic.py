@@ -1,7 +1,11 @@
+from returns.result import Failure, Success
+
 from src.domains.user import CreateUserOutcome, CreateUserOutput, UserError, UserRecord, UserRuleCheck
 from src.logics.user_logic import (
     check_email_domain,
     check_user_is_new,
+    enforce_rule,
+    require_written_record,
     resolve_create_user_log_level,
     resolve_create_user_status,
 )
@@ -55,3 +59,14 @@ def test_log_level_is_info_on_success_and_error_on_failure():
     output = CreateUserOutput(id="1", email="ana@gmail.com", name="Ana")
     assert resolve_create_user_log_level(CreateUserOutcome(output=output)) == "info"
     assert resolve_create_user_log_level(CreateUserOutcome(error=UserError.STORAGE_FAILURE)) == "error"
+
+
+def test_passed_rule_continues_and_failed_rule_stops():
+    assert enforce_rule(UserRuleCheck()) == Success(None)
+    assert enforce_rule(UserRuleCheck(error=UserError.USER_ALREADY_EXISTS)) == Failure(UserError.USER_ALREADY_EXISTS)
+
+
+def test_write_must_return_the_stored_record():
+    record = UserRecord(id="1", email="ana@gmail.com", name="Ana")
+    assert require_written_record([record]) == Success(record)
+    assert require_written_record([]) == Failure(UserError.STORAGE_FAILURE)

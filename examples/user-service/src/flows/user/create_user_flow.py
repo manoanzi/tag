@@ -8,7 +8,7 @@ from src.adapters.user_adapter import (
     to_create_user_outcome,
     to_create_user_output,
     to_create_user_response,
-    to_rule_result,
+    to_user_from_record,
     to_user_domain,
     to_user_record,
 )
@@ -17,6 +17,8 @@ from src.gateways.user_gateway import find_users_by_email, persist_user
 from src.logics.user_logic import (
     check_email_domain,
     check_user_is_new,
+    enforce_rule,
+    require_written_record,
     resolve_create_user_log_level,
     resolve_create_user_status,
 )
@@ -30,12 +32,14 @@ def create_user_flow(
 ) -> CreateUserResponse:
     result = to_create_user_input(raw).bind(  # Adapter (Tolerant Reader)
         lambda data: flow(
-            to_rule_result(check_email_domain(data.email)),  # Logic + Adapter
+            enforce_rule(check_email_domain(data.email)),  # Logic
             bind(lambda _: find_users_by_email(db, data.email)),  # Gateway (IO)
-            bind(lambda existing: to_rule_result(check_user_is_new(existing))),  # Logic + Adapter
+            bind(lambda existing: enforce_rule(check_user_is_new(existing))),  # Logic
             map_(lambda _: to_user_domain(data, ids.new_id())),  # Protocol (randomness) + Adapter
             map_(to_user_record),  # Adapter
             bind(lambda record: persist_user(db, record)),  # Gateway (IO)
+            bind(require_written_record),  # Logic
+            map_(to_user_from_record),  # Adapter
             map_(to_create_user_output),  # Adapter
         )
     )

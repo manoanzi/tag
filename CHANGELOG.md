@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python project template
 - Example: complete Payment Service
 
+## [0.3.5] - 2026-11-15
+
+### Changed
+- `to_rule_result` became the Logic `enforce_rule`, and `to_single_user_record` became the Logic `require_written_record`, called by the Flow: choosing a path (continue or fail) is a decision, not a reshape
+- `persist_user` returns the written records; the Flow decides and converts them
+- Documented test: a function that chooses a path or picks a value by a rule is a Logic; one that only reshapes data is an Adapter
+
 ## [0.3.4] - 2026-11-15
 
 ### Changed
@@ -109,7 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handlers without business logic
 - Protocol-based dependency injection
 
-[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/manoanzi/tag/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/manoanzi/tag/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/manoanzi/tag/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/manoanzi/tag/compare/v0.3.1...v0.3.2

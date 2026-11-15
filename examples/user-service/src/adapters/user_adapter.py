@@ -2,7 +2,7 @@ from typing import Any
 from uuid import UUID
 
 from returns.maybe import Maybe
-from returns.result import Failure, Result, Success, safe
+from returns.result import Result, Success, safe
 
 from src.domains.user import (
     CreateUserInput,
@@ -12,7 +12,6 @@ from src.domains.user import (
     User,
     UserError,
     UserRecord,
-    UserRuleCheck,
 )
 from src.resources.user_rules import USER_ERROR_MESSAGES
 
@@ -20,11 +19,6 @@ from src.resources.user_rules import USER_ERROR_MESSAGES
 def to_create_user_input(raw: dict[str, Any]) -> Result[CreateUserInput, UserError]:
     # Tolerant Reader: unknown fields are ignored, missing ones are invalid (never defaulted).
     return safe(CreateUserInput.model_validate)(raw).alt(lambda _: UserError.INVALID_PAYLOAD)
-
-
-def to_rule_result(check: UserRuleCheck) -> Result[None, UserError]:
-    """Turns a Logic decision (schema) into a step of the Result pipeline."""
-    return Maybe.from_optional(check.error).map(Failure).value_or(Success(None))
 
 
 def to_user_domain(data: CreateUserInput, user_id: UUID) -> User:
@@ -42,11 +36,6 @@ def to_user_query_params(record: UserRecord) -> dict[str, Any]:
 
 def to_user_records(rows: list[dict[str, Any]]) -> list[UserRecord]:
     return [UserRecord(**row) for row in rows]
-
-
-def to_single_user_record(records: list[UserRecord]) -> Result[UserRecord, UserError]:
-    # A write that returns no row is a storage failure, not a crash.
-    return Maybe.from_optional(next(iter(records), None)).map(Success).value_or(Failure(UserError.STORAGE_FAILURE))
 
 
 def to_user_from_record(record: UserRecord) -> User:

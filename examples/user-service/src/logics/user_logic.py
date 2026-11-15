@@ -1,5 +1,7 @@
 from typing import Literal
 
+from returns.result import Failure, Result, Success
+
 from src.domains.user import CreateUserOutcome, UserError, UserRecord, UserRuleCheck
 from src.resources.user_rules import BLOCKED_EMAIL_DOMAINS
 
@@ -34,3 +36,17 @@ def resolve_create_user_log_level(outcome: CreateUserOutcome) -> Literal["info",
     if outcome.error is None:
         return "info"
     return "error"
+
+
+def enforce_rule(check: UserRuleCheck) -> Result[None, UserError]:
+    """A failed rule check stops the pipeline; a passed one lets it continue."""
+    if check.error is None:
+        return Success(None)
+    return Failure(check.error)
+
+
+def require_written_record(records: list[UserRecord]) -> Result[UserRecord, UserError]:
+    """A write must return the stored row; no row means storage failed."""
+    if not records:
+        return Failure(UserError.STORAGE_FAILURE)
+    return Success(records[0])

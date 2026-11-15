@@ -1,13 +1,11 @@
 from returns.result import Result
 
 from src.adapters.user_adapter import (
-    to_single_user_record,
     to_storage_error,
-    to_user_from_record,
     to_user_query_params,
     to_user_records,
 )
-from src.domains.user import User, UserError, UserRecord
+from src.domains.user import UserError, UserRecord
 from src.protocols.database import DatabaseProtocol
 
 FIND_USERS_BY_EMAIL = """
@@ -25,12 +23,10 @@ def find_users_by_email(db: DatabaseProtocol, email: str) -> Result[list[UserRec
     return db.execute(FIND_USERS_BY_EMAIL, {"email": email}).map(to_user_records).alt(to_storage_error)
 
 
-def persist_user(db: DatabaseProtocol, record: UserRecord) -> Result[User, UserError]:
+def persist_user(db: DatabaseProtocol, record: UserRecord) -> Result[list[UserRecord], UserError]:
     return (
         db.execute(INSERT_USER, to_user_query_params(record))
         .alt(to_storage_error)
         .map(to_user_records)
-        .bind(to_single_user_record)
-        .map(to_user_from_record)
     )
 

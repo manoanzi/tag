@@ -48,8 +48,8 @@ cd examples/user-service && pip install -e ".[dev]" && pytest && python -m src.m
 |---|---|---|
 | 1 | Protocols define contracts | Every infrastructure dependency sits behind a `typing.Protocol` |
 | 2 | Domains are schemas, never functions | Immutable data definitions (Pydantic, `frozen=True`) |
-| 3 | Logics are pure and hold the decisions | No IO, randomness, clock or `Result`. Every rule and branch lives here, and the decision comes back as a domain schema (e.g. `UserRuleCheck`) |
-| 4 | Adapters transform structures | Pure conversions between layers: `model_dump`, rows, errors, responses, and schemas to `Result` (`Success`/`Failure`). No `uuid4()` or `now()` |
+| 3 | Logics are pure and hold the decisions | No IO, randomness or clock. Every rule and every choice of path lives here: business rules return schemas (e.g. `UserRuleCheck`), and gate Logics turn them into pipeline steps (`Success`/`Failure`). Flows call them |
+| 4 | Adapters only reshape data | Pure conversions between layers: `model_dump`, rows, records, errors, outcomes and responses. They never choose a path (continue or fail). No `uuid4()` or `now()` |
 | 5 | Gateways do IO | All external communication, through Protocols received as parameters |
 | 6 | Flows are orchestration pipelines | One Flow per use case, from raw input to the response schema, composing Gateways, Logics and Adapters. Business logs belong here |
 | 7 | Handlers only forward | They pass the transport input to a Flow and return its response schema. Nothing else |
@@ -110,12 +110,14 @@ Response ← Driver ← Handler ← Flow (response schema)
 def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
     result = to_create_user_input(raw).bind(                                     # Adapter
         lambda data: flow(
-            to_rule_result(check_email_domain(data.email)),                      # Logic + Adapter
+            enforce_rule(check_email_domain(data.email)),                        # Logic
             bind(lambda _: find_users_by_email(db, data.email)),                 # Gateway (IO)
-            bind(lambda existing: to_rule_result(check_user_is_new(existing))),  # Logic + Adapter
+            bind(lambda existing: enforce_rule(check_user_is_new(existing))),    # Logic
             map_(lambda _: to_user_domain(data, ids.new_id())),                  # Protocol (randomness) + Adapter
             map_(to_user_record),                                                # Adapter
             bind(lambda record: persist_user(db, record)),                       # Gateway (IO)
+            bind(require_written_record),                                        # Logic
+            map_(to_user_from_record),                                           # Adapter
             map_(to_create_user_output),                                         # Adapter
         )
     )
@@ -131,18 +133,19 @@ def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
 
 The Flow depends only on Protocols. Even the user id comes from `IdGeneratorProtocol`: generating it is not IO, so the Flow calls it directly and hands the value to the Adapter. Every Adapter and Logic stays pure and tests are deterministic. The [runnable example](examples/user-service) injects SQLite and UUIDv4 Drivers; tests inject an in-memory database and a fixed id.
 
-The Handler only forwards: the Flow owns the whole use case, including the business log and the response schema. A Gateway that would only pass a call through (like writing a log or generating an id) is not created. Logics never build a `Result`; they return decisions as schemas, and an Adapter turns them into pipeline steps. At the end, the `Result` becomes an outcome schema once, and the log and response Adapters work on that schema.
+The Handler only forwards: the Flow owns the whole use case, including the business log and the response schema. A Gateway that would only pass a call through (like writing a log or generating an id) is not created. The test for Logic versus Adapter: if a function chooses a path (continue or fail) or picks a value by a rule, it is a Logic; if it only reshapes data, it is an Adapter. Business rules return schemas, and a gate Logic turns them into pipeline steps. At the end, the `Result` becomes an outcome schema once, and the log and response Adapters work on that schema.
 
 ```python
-# src/logics/user_logic.py: decisions as data, never Result
-def check_user_is_new(existing: list[UserRecord]) -> UserRuleCheck:
+# src/logics/user_logic.py
+def check_user_is_new(existing: list[UserRecord]) -> UserRuleCheck:   # business rule -> schema
     if existing:
         return UserRuleCheck(error=UserError.USER_ALREADY_EXISTS)
     return UserRuleCheck()
 
-# src/adapters/user_adapter.py: the bridge from schema to Result
-def to_rule_result(check: UserRuleCheck) -> Result[None, UserError]:
-    return Maybe.from_optional(check.error).map(Failure).value_or(Success(None))
+def enforce_rule(check: UserRuleCheck) -> Result[None, UserError]:     # decides: continue or stop
+    if check.error is None:
+        return Success(None)
+    return Failure(check.error)
 ```
 
 ```python

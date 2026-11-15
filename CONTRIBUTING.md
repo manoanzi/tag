@@ -66,8 +66,8 @@ Every contribution must follow the 9 core principles:
 
 1. **Protocols define contracts**: infrastructure abstractions through `typing.Protocol`
 2. **Domains are schemas, never functions**: immutable Pydantic entities
-3. **Logics are pure and hold the decisions**: no IO, randomness, clock or `Result`; every rule and branch lives here and returns a domain schema
-4. **Adapters transform structures**: conversions between layers with no side effects, including schemas to `Result`
+3. **Logics are pure and hold the decisions**: no IO, randomness or clock; every rule and every choice of path (continue or fail) lives here, and Flows call them
+4. **Adapters only reshape data**: conversions between layers with no side effects; they never choose a path
 5. **Gateways do IO**: external access through Protocols received as parameters
 6. **Flows are orchestration pipelines**: from raw input to the response schema, including business logs
 7. **Handlers only forward**: transport input to a Flow, response schema back
