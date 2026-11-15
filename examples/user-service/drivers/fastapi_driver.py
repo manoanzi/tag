@@ -8,7 +8,7 @@ from src.protocols.http_server import Handler
 
 
 class FastAPIDriver:
-    """Implements the HttpServer Protocol with FastAPI."""
+    """Implements the HttpServerProtocol with FastAPI."""
 
     def __init__(self) -> None:
         self.app = FastAPI(title="TAG user service example")

@@ -15,8 +15,17 @@ def test_post_users_creates_and_rejects_duplicate():
     assert created.json()["email"] == "ana@gmail.com"
 
     duplicate = http.post("/users", json={"email": "ana@gmail.com", "name": "Ana"})
-    assert duplicate.status_code == 400
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"] == "user_already_exists"
+
+
+def test_post_users_rejects_disposable_email():
+    response = client().post("/users", json={"email": "ana@tempmail.com", "name": "Ana"})
+    assert response.status_code == 422
+    assert response.json()["error"] == "email_domain_not_allowed"
 
 
 def test_post_users_invalid_payload():
-    assert client().post("/users", json={"email": "nope"}).status_code == 422
+    response = client().post("/users", json={"email": "nope"})
+    assert response.status_code == 422
+    assert response.json()["error"] == "invalid_payload"

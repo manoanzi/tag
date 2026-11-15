@@ -9,8 +9,9 @@ CREATE_USERS_TABLE = """
 INSERT_USER = """
     INSERT INTO users (id, email, name)
     VALUES (:id, :email, :name)
+    RETURNING id, email, name
 """
 
-FIND_USER_BY_EMAIL = """
+FIND_USERS_BY_EMAIL = """
     SELECT id, email, name FROM users WHERE email = :email
 """

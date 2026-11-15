@@ -59,13 +59,13 @@ Todas as contribuições devem seguir os 9 princípios fundamentais:
 
 1. **Protocols definem contratos**: abstrações de infraestrutura via `typing.Protocol`
 2. **Domains são schemas, nunca funções**: entidades imutáveis com Pydantic
-3. **Logics são puras**: nunca fazem IO, recebem dados e retornam dados
+3. **Logics são puras e concentram as decisões**: sem IO, aleatoriedade ou relógio; toda regra e ramificação fica aqui
 4. **Adapters transformam estruturas**: conversões entre camadas sem efeitos colaterais
 5. **Gateways fazem IO**: acesso externo via Protocols recebidos como parâmetro
 6. **Flows são pipelines de orquestração**: compõem Gateways, Logics e Adapters
 7. **Handlers conectam transporte a Flows**: ciclo de vida do dado, da entrada à saída
 8. **Drivers implementam Protocols**: encapsulam bibliotecas externas fora de `src/`
-9. **IO nas bordas**: efeitos colaterais isolados nos Gateways e Drivers
+9. **Efeitos colaterais nas bordas**: IO, aleatoriedade e tempo ficam atrás de Protocols, acessados por Gateways e implementados por Drivers
 
 ## Processo de Revisão
 

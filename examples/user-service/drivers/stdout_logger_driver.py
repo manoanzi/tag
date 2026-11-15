@@ -4,7 +4,7 @@ from typing import Any
 
 
 class StdoutLoggerDriver:
-    """Implements the Logger Protocol with JSON lines on stdout."""
+    """Implements the LoggerProtocol with JSON lines on stdout."""
 
     def info(self, message: str, **context: Any) -> None:
         self._write("info", message, context)

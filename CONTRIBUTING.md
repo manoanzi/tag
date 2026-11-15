@@ -66,13 +66,13 @@ Every contribution must follow the 9 core principles:
 
 1. **Protocols define contracts**: infrastructure abstractions through `typing.Protocol`
 2. **Domains are schemas, never functions**: immutable Pydantic entities
-3. **Logics are pure**: no IO, data in and data out
+3. **Logics are pure and hold the decisions**: no IO, randomness or clock; every rule and branch lives here
 4. **Adapters transform structures**: conversions between layers with no side effects
 5. **Gateways do IO**: external access through Protocols received as parameters
 6. **Flows are orchestration pipelines**: they compose Gateways, Logics and Adapters
 7. **Handlers connect transport to Flows**: they own a request's lifecycle, from input to output
 8. **Drivers implement Protocols**: they wrap external libraries outside `src/`
-9. **IO at the edges**: side effects live only in Gateways and Drivers
+9. **Side effects at the edges**: IO, randomness and time live only behind Protocols, reached through Gateways and implemented by Drivers
 
 ## Review process
 

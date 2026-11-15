@@ -48,13 +48,15 @@ cd examples/user-service && pip install -e ".[dev]" && pytest && python -m src.m
 |---|---|---|
 | 1 | Protocols definem contratos | Toda dependência de infraestrutura fica atrás de um `typing.Protocol` |
 | 2 | Domains são schemas, nunca funções | Definições de dados imutáveis (Pydantic, `frozen=True`) |
-| 3 | Logics são puras | Sem IO: recebem dados, retornam dados |
-| 4 | Adapters transformam estruturas | Conversões puras entre camadas |
+| 3 | Logics são puras e concentram as decisões | Sem IO, sem aleatoriedade, sem relógio. Toda regra e ramificação (validação, mapeamento de status) fica aqui |
+| 4 | Adapters transformam estruturas | Conversões puras entre camadas, inclusive `model_dump`, linhas do banco e erros. Nada de `uuid4()` ou `now()` |
 | 5 | Gateways fazem IO | Toda comunicação externa, via Protocols recebidos como parâmetro |
 | 6 | Flows são pipelines de orquestração | Um Flow por caso de uso, compondo Gateways, Logics e Adapters |
-| 7 | Handlers conectam transporte a Flows | Cuidam do ciclo de vida da requisição, da entrada à saída |
+| 7 | Handlers conectam transporte a Flows | Encadeiam Adapter → Flow → Logic, sem `if` nem `match` |
 | 8 | Drivers implementam Protocols | Bibliotecas externas ficam fora do código de domínio |
-| 9 | IO nas bordas | O núcleo da aplicação permanece puro |
+| 9 | Efeitos colaterais nas bordas | IO, aleatoriedade e tempo vêm de Protocols (ex.: `IdGeneratorProtocol`), acessados por Gateways |
+
+Nomes: contratos são `<Capacidade>Protocol` (`DatabaseProtocol`, `LoggerProtocol`) e suas implementações são `<Tecnologia>Driver` (`SQLiteDriver`, `UUID4Driver`).
 
 ## Estrutura de diretórios
 
@@ -84,7 +86,7 @@ project-root/
 | Logics, Adapters | Domains |
 | Gateways | Protocols, Domains, Adapters, Resources |
 | Flows | Gateways, Logics, Adapters, Protocols, Resources |
-| Handlers | Adapters, Flows, Protocols, Resources |
+| Handlers | Adapters, Flows, Logics, Protocols, Resources |
 | Drivers | Protocols, Resources |
 | `main.py` | Drivers, Handlers, Resources |
 
@@ -98,29 +100,39 @@ Response ← Driver ← Handler ← Result ←────┘
 
 ```python
 # src/flows/user/create_user_flow.py
-from returns.pipeline import flow
-from returns.pointfree import bind, map_
-from returns.result import Result, Success
-
-def create_user_flow(db: DatabaseClient, data: CreateUserInput) -> Result[CreateUserOutput, str]:
+def create_user_flow(
+    db: DatabaseProtocol, ids: IdGeneratorProtocol, data: CreateUserInput
+) -> Result[CreateUserOutput, UserError]:
     return flow(
-        validate_email_domain(data.email),                         # Logic (pura)
-        bind(lambda email: find_user_by_email(db, email)),         # Gateway (IO)
-        bind(ensure_user_not_exists),                              # Logic (pura)
-        bind(lambda _: Success(to_user_domain(data))),             # Adapter
-        bind(lambda user: persist_user(db, user)),                 # Gateway (IO)
-        map_(to_create_user_output),                               # Adapter
+        validate_email_domain(data.email),                       # Logic (pure)
+        bind(lambda email: find_users_by_email(db, email)),      # Gateway (IO)
+        bind(ensure_user_not_exists),                            # Logic (pure)
+        bind(lambda _: generate_user_id(ids)),                   # Gateway (randomness)
+        map_(lambda user_id: to_user_domain(data, user_id)),     # Adapter
+        map_(to_user_record),                                    # Adapter
+        bind(lambda record: persist_user(db, record)),           # Gateway (IO)
+        map_(to_create_user_output),                             # Adapter
     )
 ```
 
-O Flow depende só do Protocol `DatabaseClient`. O [exemplo executável](examples/user-service) injeta um Driver de SQLite, em produção poderia ser um de Postgres, e os testes usam um fake em memória.
+O Flow depende só de Protocols. Até o id do usuário vem do `IdGeneratorProtocol`, então todo Adapter e toda Logic continuam puros e os testes são determinísticos. O [exemplo executável](examples/user-service) injeta Drivers de SQLite e UUIDv4; os testes injetam um banco em memória e um id fixo.
+
+O Handler não tem ramificação: a decisão sobre a resposta é de uma Logic, e o corpo da resposta é montado por um Adapter.
+
+```python
+# src/handlers/user_handlers.py: no if, no match
+def handle_create_user(db, ids, logger, raw_body) -> tuple[int, dict]:
+    result = to_create_user_input(raw_body).bind(lambda data: create_user_flow(db, ids, data))
+    result.alt(tap(lambda error: logger.error("could not create user", error=error.name)))
+    return resolve_create_user_status(result), to_create_user_response_body(result)  # Logic, Adapter
+```
 
 ```python
 # src/main.py
 def create_app() -> FastAPIDriver:
     settings = load_settings()
-    db, logger, http = SQLiteDriver(settings), StdoutLoggerDriver(), FastAPIDriver()
-    register_user_handlers(http, db, logger)
+    db, ids, logger, http = SQLiteDriver(settings), UUID4Driver(), StdoutLoggerDriver(), FastAPIDriver()
+    register_user_handlers(http, db, ids, logger)
     return http
 ```
 
@@ -156,7 +168,7 @@ Adapters de entrada seguem o padrão **Tolerant Reader**: leem só os campos de 
 
 <details><summary><strong>Funciona com qualquer framework HTTP?</strong></summary>
 
-Sim. O framework é um Driver atrás do Protocol `HttpServer`. FastAPI, Flask ou Starlette são trocados no `main.py`.
+Sim. O framework é um Driver atrás do `HttpServerProtocol`. FastAPI, Flask ou Starlette são trocados no `main.py`.
 </details>
 
 <details><summary><strong>Serve para monólitos?</strong></summary>

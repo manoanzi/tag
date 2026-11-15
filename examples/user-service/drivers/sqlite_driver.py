@@ -8,7 +8,7 @@ from src.resources.user_queries import CREATE_USERS_TABLE
 
 
 class SQLiteDriver:
-    """Implements the DatabaseClient Protocol with the standard-library sqlite3."""
+    """Implements the DatabaseProtocol with the standard-library sqlite3."""
 
     def __init__(self, settings: Settings) -> None:
         self._conn = sqlite3.connect(settings.database_path, check_same_thread=False)
