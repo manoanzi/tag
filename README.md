@@ -119,14 +119,14 @@ def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
             map_(to_create_user_output),                                         # Adapter
         )
     )
-    write_log(logger, to_create_user_log_entry(result))                          # Adapter + Gateway (IO)
-    status = resolve_create_user_status(to_create_user_outcome(result))          # Adapter + Logic
-    return to_create_user_response(status, result)                               # Adapter
+    outcome = to_create_user_outcome(result)                                     # Adapter: Result -> schema, once
+    write_log(logger, to_create_user_log_entry(outcome))                         # Adapter + Gateway (IO)
+    return to_create_user_response(resolve_create_user_status(outcome), outcome) # Logic + Adapter
 ```
 
 The Flow depends only on Protocols. Even the user id comes from `IdGeneratorProtocol`: generating it is not IO, so the Flow calls it directly and hands the value to the Adapter. Every Adapter and Logic stays pure and tests are deterministic. The [runnable example](examples/user-service) injects SQLite and UUIDv4 Drivers; tests inject an in-memory database and a fixed id.
 
-The Handler only forwards: the Flow owns the whole use case, including the business log and the response schema. Logics never build a `Result`; they return decisions as schemas, and an Adapter turns them into pipeline steps.
+The Handler only forwards: the Flow owns the whole use case, including the business log and the response schema. Logics never build a `Result`; they return decisions as schemas, and an Adapter turns them into pipeline steps. At the end, the `Result` becomes an outcome schema once, and the log and response Adapters work on that schema.
 
 ```python
 # src/logics/user_logic.py: decisions as data, never Result
@@ -172,7 +172,7 @@ Every operation that can fail returns `Result[Success, Failure]` ([dry-python/re
 
 ## Contract evolution
 
-Input Adapters follow the **Tolerant Reader** pattern: they read only the fields they need, so upstream services can add fields without breaking consumers. External contracts can be declared in `resources/` and checked in CI.
+Input Adapters follow the **Tolerant Reader** pattern: they ignore fields they do not need, so upstream services can add fields without breaking consumers. Required fields are never defaulted: if one is missing, the input is invalid. External contracts can be declared in `resources/` and checked in CI.
 
 ## How TAG compares
 

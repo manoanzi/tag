@@ -19,13 +19,8 @@ from src.resources.user_rules import USER_ERROR_MESSAGES
 
 
 def to_create_user_input(raw: dict[str, Any]) -> Result[CreateUserInput, UserError]:
-    # Tolerant Reader: read only the fields this use case needs, ignore the rest.
-    return _parse_create_user_input(raw).alt(lambda _: UserError.INVALID_PAYLOAD)
-
-
-@safe
-def _parse_create_user_input(raw: dict[str, Any]) -> CreateUserInput:
-    return CreateUserInput(email=raw.get("email", ""), name=raw.get("name", ""))
+    # Tolerant Reader: unknown fields are ignored, missing ones are invalid (never defaulted).
+    return safe(CreateUserInput.model_validate)(raw).alt(lambda _: UserError.INVALID_PAYLOAD)
 
 
 def to_rule_result(check: UserRuleCheck) -> Result[None, UserError]:
@@ -42,7 +37,7 @@ def to_user_record(user: User) -> UserRecord:
     return UserRecord(id=str(user.id), email=user.email, name=user.name)
 
 
-def to_query_params(record: UserRecord) -> dict[str, Any]:
+def to_user_query_params(record: UserRecord) -> dict[str, Any]:
     return record.model_dump()
 
 
@@ -50,8 +45,13 @@ def to_user_records(rows: list[dict[str, Any]]) -> list[UserRecord]:
     return [UserRecord(**row) for row in rows]
 
 
-def to_user_from_rows(rows: list[dict[str, Any]]) -> User:
-    return User(**rows[0])
+def to_single_user_record(records: list[UserRecord]) -> Result[UserRecord, UserError]:
+    # A write that returns no row is a storage failure, not a crash.
+    return Maybe.from_optional(next(iter(records), None)).map(Success).value_or(Failure(UserError.STORAGE_FAILURE))
+
+
+def to_user_from_record(record: UserRecord) -> User:
+    return User(id=UUID(record.id), email=record.email, name=record.name)
 
 
 def to_storage_error(_: Exception) -> UserError:
@@ -63,6 +63,7 @@ def to_create_user_output(user: User) -> CreateUserOutput:
 
 
 def to_create_user_outcome(result: Result[CreateUserOutput, UserError]) -> CreateUserOutcome:
+    """The only Result -> schema conversion of the use case; everything after works on the outcome."""
     return (
         result.map(lambda output: CreateUserOutcome(output=output))
         .lash(lambda error: Success(CreateUserOutcome(error=error)))
@@ -70,22 +71,18 @@ def to_create_user_outcome(result: Result[CreateUserOutput, UserError]) -> Creat
     )
 
 
-def to_create_user_response(status: int, result: Result[CreateUserOutput, UserError]) -> CreateUserResponse:
+def to_create_user_response(status: int, outcome: CreateUserOutcome) -> CreateUserResponse:
     body = (
-        result.map(lambda output: output.model_dump())
-        .lash(lambda error: Success({"error": error.value, "message": USER_ERROR_MESSAGES[error]}))
-        .unwrap()
+        Maybe.from_optional(outcome.output)
+        .map(lambda output: output.model_dump())
+        .or_else_call(lambda: {"error": outcome.error, "message": USER_ERROR_MESSAGES[outcome.error]})
     )
     return CreateUserResponse(status=status, body=body)
 
 
-def to_create_user_log_entry(result: Result[CreateUserOutput, UserError]) -> LogEntry:
+def to_create_user_log_entry(outcome: CreateUserOutcome) -> LogEntry:
     return (
-        result.map(lambda output: LogEntry(level="info", message="user created", context={"user_id": output.id}))
-        .lash(
-            lambda error: Success(
-                LogEntry(level="error", message="could not create user", context={"error": error.value})
-            )
-        )
-        .unwrap()
+        Maybe.from_optional(outcome.output)
+        .map(lambda output: LogEntry(level="info", message="user created", context={"user_id": output.id}))
+        .or_else_call(lambda: LogEntry(level="error", message="could not create user", context={"error": outcome.error}))
     )

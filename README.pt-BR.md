@@ -119,14 +119,14 @@ def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
             map_(to_create_user_output),                                         # Adapter
         )
     )
-    write_log(logger, to_create_user_log_entry(result))                          # Adapter + Gateway (IO)
-    status = resolve_create_user_status(to_create_user_outcome(result))          # Adapter + Logic
-    return to_create_user_response(status, result)                               # Adapter
+    outcome = to_create_user_outcome(result)                                     # Adapter: Result -> schema, once
+    write_log(logger, to_create_user_log_entry(outcome))                         # Adapter + Gateway (IO)
+    return to_create_user_response(resolve_create_user_status(outcome), outcome) # Logic + Adapter
 ```
 
 O Flow depende só de Protocols. Até o id do usuário vem do `IdGeneratorProtocol`: gerar o id não é IO, então o Flow chama direto e entrega o valor ao Adapter. Todo Adapter e toda Logic continuam puros e os testes são determinísticos. O [exemplo executável](examples/user-service) injeta Drivers de SQLite e UUIDv4; os testes injetam um banco em memória e um id fixo.
 
-O Handler só repassa: o Flow é dono do caso de uso inteiro, inclusive do log de negócio e do schema de resposta. Logics nunca constroem `Result`; elas devolvem decisões como schemas, e um Adapter as transforma em passos do pipeline.
+O Handler só repassa: o Flow é dono do caso de uso inteiro, inclusive do log de negócio e do schema de resposta. Logics nunca constroem `Result`; elas devolvem decisões como schemas, e um Adapter as transforma em passos do pipeline. No fim, o `Result` vira um schema de resultado uma única vez, e os Adapters de log e de resposta trabalham sobre esse schema.
 
 ```python
 # src/logics/user_logic.py: decisions as data, never Result
@@ -172,7 +172,7 @@ Toda operação que pode falhar retorna `Result[Sucesso, Falha]` ([dry-python/re
 
 ## Evolução de contratos
 
-Adapters de entrada seguem o padrão **Tolerant Reader**: leem só os campos de que precisam, então serviços upstream podem adicionar campos sem quebrar consumidores. Contratos externos podem ser declarados em `resources/` e validados no CI.
+Adapters de entrada seguem o padrão **Tolerant Reader**: ignoram campos de que não precisam, então serviços upstream podem adicionar campos sem quebrar consumidores. Campos obrigatórios nunca ganham valor padrão: se faltar um, a entrada é inválida. Contratos externos podem ser declarados em `resources/` e validados no CI.
 
 ## Comparação
 

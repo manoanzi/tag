@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python project template
 - Example: complete Payment Service
 
+## [0.3.3] - 2026-11-15
+
+### Fixed
+- Tolerant Reader no longer defaults missing fields: a request without `name` (or with an empty one) is now `invalid_payload` (422) instead of creating a user with an empty name
+- A write that returns no row is a `storage_failure` instead of an `IndexError` escaping the `Result` pipeline
+
+### Changed
+- The `Result` becomes `CreateUserOutcome` once in the Flow; the log and response Adapters work on that schema, removing three repeated `map`/`lash`/`unwrap` chains
+- Rows always go through `UserRecord` before the domain (`to_user_records` -> `to_single_user_record` -> `to_user_from_record`)
+- `to_query_params` renamed to `to_user_query_params`; the private parsing helper was replaced by `safe(CreateUserInput.model_validate)`
+
 ## [0.3.2] - 2026-11-15
 
 ### Changed
@@ -91,7 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handlers without business logic
 - Protocol-based dependency injection
 
-[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/manoanzi/tag/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/manoanzi/tag/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/manoanzi/tag/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/manoanzi/tag/compare/v0.2.0...v0.3.0

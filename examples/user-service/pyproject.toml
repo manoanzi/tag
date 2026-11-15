@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tag-user-service-example"
-version = "0.3.2"
+version = "0.3.3"
 description = "Runnable TAG (The Architecture of Gateways) example: a user service with FastAPI and SQLite."
 requires-python = ">=3.11"
 dependencies = [

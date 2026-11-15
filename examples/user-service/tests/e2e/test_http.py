@@ -29,3 +29,9 @@ def test_post_users_invalid_payload():
     response = client().post("/users", json={"email": "nope"})
     assert response.status_code == 422
     assert response.json()["error"] == "invalid_payload"
+
+
+def test_post_users_missing_name_is_invalid():
+    response = client().post("/users", json={"email": "ana@gmail.com"})
+    assert response.status_code == 422
+    assert response.json()["error"] == "invalid_payload"

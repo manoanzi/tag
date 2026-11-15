@@ -36,6 +36,6 @@ def create_user_flow(
             map_(to_create_user_output),  # Adapter
         )
     )
-    write_log(logger, to_create_user_log_entry(result))  # Adapter + Gateway (IO)
-    status = resolve_create_user_status(to_create_user_outcome(result))  # Adapter + Logic
-    return to_create_user_response(status, result)  # Adapter
+    outcome = to_create_user_outcome(result)  # Adapter: Result -> schema, once
+    write_log(logger, to_create_user_log_entry(outcome))  # Adapter + Gateway (IO)
+    return to_create_user_response(resolve_create_user_status(outcome), outcome)  # Logic + Adapter

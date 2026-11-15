@@ -2,7 +2,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserError(StrEnum):
@@ -41,10 +41,12 @@ class UserRecord(BaseModel):
 
 
 class CreateUserInput(BaseModel):
+    """Unknown fields are ignored (Pydantic default); missing or empty ones are invalid."""
+
     model_config = ConfigDict(frozen=True)
 
     email: EmailStr
-    name: str
+    name: str = Field(min_length=1)
 
 
 class CreateUserOutput(BaseModel):
