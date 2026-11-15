@@ -49,17 +49,17 @@ cd examples/user-service && pip install -e ".[dev]" && pytest && python -m src.m
 | 1 | Protocols definem contratos | Toda dependência de infraestrutura fica atrás de um `typing.Protocol` |
 | 2 | Domains são schemas, nunca funções | Definições de dados imutáveis (Pydantic, `frozen=True`) |
 | 3 | Logics são puras e concentram as decisões | Sem IO, aleatoriedade, relógio ou `Result`. Toda regra e ramificação fica aqui, e a decisão volta como schema de domínio (ex.: `UserRuleCheck`) |
-| 4 | Adapters transformam estruturas | Conversões puras entre camadas: `model_dump`, linhas do banco, erros, registros de log, respostas e schemas para `Result` (`Success`/`Failure`). Nada de `uuid4()` ou `now()` |
+| 4 | Adapters transformam estruturas | Conversões puras entre camadas: `model_dump`, linhas do banco, erros, respostas e schemas para `Result` (`Success`/`Failure`). Nada de `uuid4()` ou `now()` |
 | 5 | Gateways fazem IO | Toda comunicação externa, via Protocols recebidos como parâmetro |
 | 6 | Flows são pipelines de orquestração | Um Flow por caso de uso, da entrada bruta ao schema de resposta, compondo Gateways, Logics e Adapters. O log de negócio fica aqui |
 | 7 | Handlers só repassam | Entregam a entrada do transporte a um Flow e devolvem o schema de resposta dele. Nada mais |
 | 8 | Drivers implementam Protocols | Bibliotecas externas ficam fora do código de domínio |
-| 9 | Efeitos colaterais nas bordas | IO passa por Gateways. Aleatoriedade e tempo vêm de Protocols (ex.: `IdGeneratorProtocol`) que o Flow chama direto, entregando o valor a um Adapter |
+| 9 | Efeitos colaterais nas bordas | IO com conversão de dados (banco, APIs externas) passa por Gateways. Efeitos simples (log, aleatoriedade, tempo) são Protocols que o Flow chama direto, com valores já decididos por Logics ou montados por Adapters |
 
 Nomes: contratos são `<Capacidade>Protocol` (`DatabaseProtocol`, `LoggerProtocol`) e suas implementações são `<Tecnologia>Driver` (`SQLiteDriver`, `UUID4Driver`).
 
 Outras regras:
-- **Logs:** eventos de negócio ("usuário criado", "e-mail duplicado") são gravados pelo Flow: um Adapter monta o `LogEntry` e um Gateway grava. Logs de transporte (rota, latência, status HTTP) ficam no Driver.
+- **Logs:** cada caso de uso grava um evento de negócio estruturado a partir do Flow: ele monta o `LogEntry` com valores já decididos (nível e status vêm de Logics) e chama o `LoggerProtocol` direto, sem Adapter nem Gateway no meio. Logs de transporte (rota, latência) ficam no Driver.
 - **Funções privadas num Flow** só podem compor camadas. Nunca contêm regra, conversão ou IO próprios.
 - **Tipos de contrato** (como `LogEntry`) ficam junto do seu Protocol, não em Domains.
 - **Resources guardam só configuração:** valores que podem mudar por ambiente ou cliente sem mudar código (listas de bloqueio, mensagens públicas, limites), de preferência em arquivos JSON/YAML (12-Factor, fator III). Queries, esquemas e tabelas de decisão são código: ficam junto de quem os usa (Locality of Behavior). SQL fica no Gateway que o executa, tabelas de decisão na Logic que decide, e DDL em `migrations/`.
@@ -91,8 +91,8 @@ project-root/
 |---|---|
 | Protocols, Domains, Resources | nenhuma |
 | Logics | Domains, Resources |
-| Adapters | Domains, Protocols (só tipos), Resources |
-| Gateways | Protocols (única camada que faz IO por eles), Domains, Adapters, Resources |
+| Adapters | Domains, Resources |
+| Gateways | Protocols (IO com conversão de dados), Domains, Adapters, Resources |
 | Flows | Gateways, Logics, Adapters, Protocols, Resources |
 | Handlers | Flows, Protocols |
 | Drivers | Protocols, Resources |
@@ -120,13 +120,18 @@ def create_user_flow(db, ids, logger, raw: dict) -> CreateUserResponse:
         )
     )
     outcome = to_create_user_outcome(result)                                     # Adapter: Result -> schema, once
-    write_log(logger, to_create_user_log_entry(outcome))                         # Adapter + Gateway (IO)
-    return to_create_user_response(resolve_create_user_status(outcome), outcome) # Logic + Adapter
+    status = resolve_create_user_status(outcome)                                 # Logic
+    logger.log(LogEntry(                                                         # Protocol (IO)
+        level=resolve_create_user_log_level(outcome),                            # Logic
+        message="create user",
+        context={"status": status, "error": outcome.error},
+    ))
+    return to_create_user_response(status, outcome)                              # Adapter
 ```
 
 O Flow depende só de Protocols. Até o id do usuário vem do `IdGeneratorProtocol`: gerar o id não é IO, então o Flow chama direto e entrega o valor ao Adapter. Todo Adapter e toda Logic continuam puros e os testes são determinísticos. O [exemplo executável](examples/user-service) injeta Drivers de SQLite e UUIDv4; os testes injetam um banco em memória e um id fixo.
 
-O Handler só repassa: o Flow é dono do caso de uso inteiro, inclusive do log de negócio e do schema de resposta. Logics nunca constroem `Result`; elas devolvem decisões como schemas, e um Adapter as transforma em passos do pipeline. No fim, o `Result` vira um schema de resultado uma única vez, e os Adapters de log e de resposta trabalham sobre esse schema.
+O Handler só repassa: o Flow é dono do caso de uso inteiro, inclusive do log de negócio e do schema de resposta. Um Gateway que só repassaria uma chamada (como gravar log ou gerar id) não é criado. Logics nunca constroem `Result`; elas devolvem decisões como schemas, e um Adapter as transforma em passos do pipeline. No fim, o `Result` vira um schema de resultado uma única vez, e os Adapters de log e de resposta trabalham sobre esse schema.
 
 ```python
 # src/logics/user_logic.py: decisions as data, never Result

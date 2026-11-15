@@ -1,5 +1,10 @@
 from src.domains.user import CreateUserOutcome, CreateUserOutput, UserError, UserRecord, UserRuleCheck
-from src.logics.user_logic import check_email_domain, check_user_is_new, resolve_create_user_status
+from src.logics.user_logic import (
+    check_email_domain,
+    check_user_is_new,
+    resolve_create_user_log_level,
+    resolve_create_user_status,
+)
 
 
 def test_accepts_allowed_domain():
@@ -44,3 +49,9 @@ def test_every_error_has_a_configured_message():
     from src.resources.user_rules import USER_ERROR_MESSAGES
 
     assert set(USER_ERROR_MESSAGES) == {error.value for error in UserError}
+
+
+def test_log_level_is_info_on_success_and_error_on_failure():
+    output = CreateUserOutput(id="1", email="ana@gmail.com", name="Ana")
+    assert resolve_create_user_log_level(CreateUserOutcome(output=output)) == "info"
+    assert resolve_create_user_log_level(CreateUserOutcome(error=UserError.STORAGE_FAILURE)) == "error"

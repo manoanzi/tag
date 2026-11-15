@@ -65,7 +65,7 @@ Todas as contribuições devem seguir os 9 princípios fundamentais:
 6. **Flows são pipelines de orquestração**: da entrada bruta ao schema de resposta, incluindo o log de negócio
 7. **Handlers só repassam**: entrada do transporte para um Flow, schema de resposta de volta
 8. **Drivers implementam Protocols**: encapsulam bibliotecas externas fora de `src/`
-9. **Efeitos colaterais nas bordas**: IO passa por Gateways; aleatoriedade e tempo vêm de Protocols que o Flow chama direto, todos implementados por Drivers
+9. **Efeitos colaterais nas bordas**: IO com conversão de dados passa por Gateways; efeitos simples (log, aleatoriedade, tempo) são Protocols que o Flow chama direto, todos implementados por Drivers
 
 ## Processo de Revisão
 

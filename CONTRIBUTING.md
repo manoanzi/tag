@@ -72,7 +72,7 @@ Every contribution must follow the 9 core principles:
 6. **Flows are orchestration pipelines**: from raw input to the response schema, including business logs
 7. **Handlers only forward**: transport input to a Flow, response schema back
 8. **Drivers implement Protocols**: they wrap external libraries outside `src/`
-9. **Side effects at the edges**: IO goes through Gateways; randomness and time come from Protocols the Flow calls directly, all implemented by Drivers
+9. **Side effects at the edges**: IO with data conversion goes through Gateways; simple effects (log, randomness, time) are Protocols the Flow calls directly, all implemented by Drivers
 
 ## Review process
 

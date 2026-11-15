@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python project template
 - Example: complete Payment Service
 
+## [0.3.4] - 2026-11-15
+
+### Changed
+- The Flow builds a single structured `LogEntry` per use case (`create user`, with status and error) and calls `LoggerProtocol` directly
+- Log level is a Logic decision (`resolve_create_user_log_level`); the `to_create_user_log_entry` Adapter and the `write_log` Gateway were removed
+- Rule clarified: Gateways are for IO with data conversion; simple effects (log, randomness, time) are called by the Flow with values already decided
+
 ## [0.3.3] - 2026-11-15
 
 ### Fixed
@@ -102,7 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handlers without business logic
 - Protocol-based dependency injection
 
-[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/manoanzi/tag/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/manoanzi/tag/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/manoanzi/tag/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/manoanzi/tag/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/manoanzi/tag/compare/v0.3.0...v0.3.1

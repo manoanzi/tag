@@ -14,7 +14,6 @@ from src.domains.user import (
     UserRecord,
     UserRuleCheck,
 )
-from src.protocols.logger import LogEntry
 from src.resources.user_rules import USER_ERROR_MESSAGES
 
 
@@ -79,10 +78,3 @@ def to_create_user_response(status: int, outcome: CreateUserOutcome) -> CreateUs
     )
     return CreateUserResponse(status=status, body=body)
 
-
-def to_create_user_log_entry(outcome: CreateUserOutcome) -> LogEntry:
-    return (
-        Maybe.from_optional(outcome.output)
-        .map(lambda output: LogEntry(level="info", message="user created", context={"user_id": output.id}))
-        .or_else_call(lambda: LogEntry(level="error", message="could not create user", context={"error": outcome.error}))
-    )

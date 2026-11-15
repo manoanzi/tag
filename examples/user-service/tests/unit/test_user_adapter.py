@@ -4,7 +4,6 @@ from returns.result import Failure, Success
 
 from src.adapters.user_adapter import (
     to_create_user_input,
-    to_create_user_log_entry,
     to_create_user_outcome,
     to_create_user_output,
     to_create_user_response,
@@ -77,16 +76,3 @@ def test_response_from_outcome():
         status=409, body={"error": "user_already_exists", "message": "A user with this email already exists"}
     )
 
-
-def test_log_entry_from_outcome():
-    output = to_create_user_output(USER)
-    assert to_create_user_log_entry(CreateUserOutcome(output=output)) == {
-        "level": "info",
-        "message": "user created",
-        "context": {"user_id": str(USER_ID)},
-    }
-    assert to_create_user_log_entry(CreateUserOutcome(error=UserError.INVALID_PAYLOAD)) == {
-        "level": "error",
-        "message": "could not create user",
-        "context": {"error": "invalid_payload"},
-    }

@@ -32,10 +32,10 @@ curl -X POST localhost:8000/users -H 'content-type: application/json' \
 | Protocols | `src/protocols/` | `DatabaseProtocol`, `HttpServerProtocol`, `LoggerProtocol` (+ `LogEntry`), `IdGeneratorProtocol` |
 | Domains | `src/domains/user.py` | Immutable schemas: `User`, `UserRecord`, `UserRuleCheck`, `CreateUserOutcome`, `CreateUserResponse`, `UserError` |
 | Resources | `src/resources/` | Configuration only: settings, blocked e-mail domains and public error messages (JSON) |
-| Logics | `src/logics/user_logic.py` | Every decision, returned as a schema: blocked domains, duplicates, HTTP status. No `Result` |
-| Adapters | `src/adapters/user_adapter.py` | Pure conversions: input, domain, record, query params, rows, errors, rule checks to `Result`, log entry, response |
-| Gateways | `src/gateways/` | IO through Protocols (database, log), with their SQL queries inline |
-| Flows | `src/flows/user/create_user_flow.py` | The whole use case: raw input to `CreateUserResponse`, including the business log |
+| Logics | `src/logics/user_logic.py` | Every decision, returned as a schema or value: blocked domains, duplicates, HTTP status, log level. No `Result` |
+| Adapters | `src/adapters/user_adapter.py` | Pure conversions: input, domain, record, query params, rows, errors, rule checks to `Result`, outcome, response |
+| Gateways | `src/gateways/user_gateway.py` | Database IO through `DatabaseProtocol`, with the SQL queries inline |
+| Flows | `src/flows/user/create_user_flow.py` | The whole use case: raw input to `CreateUserResponse`, including one structured log event |
 | Handlers | `src/handlers/user_handlers.py` | Only forward the request body to the Flow |
 | Drivers | `drivers/` | FastAPI, SQLite, UUIDv4 and stdout logger implementations |
 | Migrations | `migrations/` | Database schema as `.sql` files, applied in order by `SQLiteDriver` |

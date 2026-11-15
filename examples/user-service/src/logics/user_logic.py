@@ -1,3 +1,5 @@
+from typing import Literal
+
 from src.domains.user import CreateUserOutcome, UserError, UserRecord, UserRuleCheck
 from src.resources.user_rules import BLOCKED_EMAIL_DOMAINS
 
@@ -26,3 +28,9 @@ def check_user_is_new(existing: list[UserRecord]) -> UserRuleCheck:
 
 def resolve_create_user_status(outcome: CreateUserOutcome) -> int:
     return HTTP_STATUS_BY_OUTCOME[outcome.error]
+
+
+def resolve_create_user_log_level(outcome: CreateUserOutcome) -> Literal["info", "error"]:
+    if outcome.error is None:
+        return "info"
+    return "error"
