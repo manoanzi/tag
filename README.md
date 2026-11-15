@@ -33,6 +33,14 @@ Core pillars:
 - **Protocol-based dependency injection:** testable without infrastructure
 - **Transport-agnostic:** HTTP, gRPC, messaging, streaming or an LLM tool call
 
+## Runnable example
+
+[`examples/user-service`](examples/user-service) is a complete service built with every TAG layer (FastAPI + SQLite, no external infrastructure), with unit, integration and HTTP tests:
+
+```bash
+cd examples/user-service && pip install -e ".[dev]" && pytest && python -m src.main
+```
+
 ## Principles
 
 | # | Principle | In short |

@@ -1,0 +1,6 @@
+from typing import Any, Protocol
+
+
+class Logger(Protocol):
+    def info(self, message: str, **context: Any) -> None: ...
+    def error(self, message: str, **context: Any) -> None: ...

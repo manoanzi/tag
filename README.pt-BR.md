@@ -33,6 +33,14 @@ Pilares:
 - **Injeção de dependência via Protocol:** testável sem infraestrutura
 - **Agnóstico de transporte:** HTTP, gRPC, mensageria, streaming ou tool call de um LLM
 
+## Exemplo executável
+
+[`examples/user-service`](examples/user-service) é um serviço completo com todas as camadas do TAG (FastAPI + SQLite, sem infraestrutura externa), com testes unitários, de integração e HTTP:
+
+```bash
+cd examples/user-service && pip install -e ".[dev]" && pytest && python -m src.main
+```
+
 ## Princípios
 
 | # | Princípio | Em resumo |

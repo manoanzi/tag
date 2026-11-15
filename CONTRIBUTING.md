@@ -6,7 +6,7 @@ Obrigado por considerar contribuir com TAG. Este documento fornece diretrizes pa
 
 1. **Fork o Repositório**
    ```bash
-   git clone https://github.com/whereisanzi/tag.git
+   git clone https://github.com/manoanzi/tag.git
    cd tag
    ```
 
@@ -78,7 +78,7 @@ Este projeto segue o [Código de Conduta](CODE_OF_CONDUCT.md). Ao participar, vo
 
 ## Dúvidas?
 
-Abra uma [issue](https://github.com/whereisanzi/tag/issues) para discussão.
+Abra uma [issue](https://github.com/manoanzi/tag/issues) para discussão.
 
 ---
 

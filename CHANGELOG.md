@@ -11,6 +11,13 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Template de projeto Python
 - Exemplo: Payment Service completo
 
+## [0.1.0] - 2026-11-15
+
+### Adicionado
+- Exemplo executável `examples/user-service` (FastAPI + SQLite) com todas as camadas TAG
+- Testes unitários, de integração e HTTP no exemplo
+- README em inglês (`README.md`) e português (`README.pt-BR.md`)
+
 ## [0.0.1] - 2025-01-21
 
 ### Adicionado
@@ -33,5 +40,6 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Handlers sem lógica de negócio
 - Injeção de dependência baseada em Protocol
 
-[Unreleased]: https://github.com/whereisanzi/tag/compare/v0.0.1...HEAD
-[0.0.1]: https://github.com/whereisanzi/tag/releases/tag/v0.0.1
+[Unreleased]: https://github.com/manoanzi/tag/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/manoanzi/tag/releases/tag/v0.1.0
+[0.0.1]: https://github.com/manoanzi/tag/releases/tag/v0.0.1
