@@ -81,7 +81,7 @@ project-root/
 |---|---|
 | Protocols, Domains, Resources | nenhuma |
 | Logics, Adapters | Domains |
-| Gateways | Protocols, Domains, Adapters |
+| Gateways | Protocols, Domains, Adapters, Resources |
 | Flows | Gateways, Logics, Adapters, Protocols, Resources |
 | Handlers | Adapters, Flows, Protocols, Resources |
 | Drivers | Protocols, Resources |
@@ -107,18 +107,18 @@ def create_user_flow(db: DatabaseClient, data: CreateUserInput) -> Result[Create
         bind(lambda email: find_user_by_email(db, email)),         # Gateway (IO)
         bind(ensure_user_not_exists),                              # Logic (pura)
         bind(lambda _: Success(to_user_domain(data))),             # Adapter
-        bind(lambda user: persist_user(db, user).map(lambda _: user)),
+        bind(lambda user: persist_user(db, user)),                 # Gateway (IO)
         map_(to_create_user_output),                               # Adapter
     )
 ```
 
-O Flow depende só do Protocol `DatabaseClient`. Em produção, o `main.py` injeta um Driver de Postgres; nos testes, um fake em memória.
+O Flow depende só do Protocol `DatabaseClient`. O [exemplo executável](examples/user-service) injeta um Driver de SQLite, em produção poderia ser um de Postgres, e os testes usam um fake em memória.
 
 ```python
 # src/main.py
 def create_app() -> FastAPIDriver:
     settings = load_settings()
-    db, logger, http = PostgresDriver(settings), StructlogDriver(settings), FastAPIDriver()
+    db, logger, http = SQLiteDriver(settings), StdoutLoggerDriver(), FastAPIDriver()
     register_user_handlers(http, db, logger)
     return http
 ```
@@ -136,7 +136,7 @@ Você testa fluxo e regra de negócio, não bibliotecas. A suíte roda sem conta
 
 ## Tratamento de erros
 
-Toda operação que pode falhar retorna `Result[Sucesso, Falha]` ([dry-python/returns](https://github.com/dry-python/returns)). Num pipeline, a primeira falha propaga até o final, sem try/except em cada etapa. O `@safe` encapsula código de terceiros que lança exceções.
+Toda operação que pode falhar retorna `Result[Sucesso, Falha]` ([dry-python/returns](https://github.com/dry-python/returns)). Num pipeline, a primeira falha propaga até o final, sem try/except em cada etapa. O `@safe` encapsula código que lança exceções, como a validação do Pydantic nos Adapters de entrada.
 
 ## Evolução de contratos
 

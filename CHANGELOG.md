@@ -11,6 +11,14 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Template de projeto Python
 - Exemplo: Payment Service completo
 
+## [0.1.1] - 2026-11-15
+
+### Corrigido
+- Regras de dependência: Gateways podem usar Resources (queries), como o exemplo já fazia
+- Adapter de entrada agora retorna `Result` (`@safe`) em vez de lançar exceção de validação
+- Trecho de código do README alinhado ao exemplo executável
+- LICENSE com ano e titular corretos; contato no Código de Conduta
+
 ## [0.1.0] - 2026-11-15
 
 ### Adicionado
@@ -18,7 +26,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Testes unitários, de integração e HTTP no exemplo
 - README em inglês (`README.md`) e português (`README.pt-BR.md`)
 
-## [0.0.1] - 2025-01-21
+## [0.0.1] - 2026-01-21
 
 ### Adicionado
 - Documentação inicial da arquitetura TAG
@@ -40,6 +48,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Handlers sem lógica de negócio
 - Injeção de dependência baseada em Protocol
 
-[Unreleased]: https://github.com/manoanzi/tag/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/manoanzi/tag/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/manoanzi/tag/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/manoanzi/tag/releases/tag/v0.1.0
 [0.0.1]: https://github.com/manoanzi/tag/releases/tag/v0.0.1

@@ -32,7 +32,7 @@ Este Código de Conduta se aplica tanto em espaços do projeto quanto em espaço
 
 ## Aplicação
 
-Instâncias de comportamento abusivo, de assédio ou inaceitável podem ser relatadas entrando em contato com a equipe do projeto. Todas as reclamações serão revisadas e investigadas e resultarão em uma resposta considerada necessária e apropriada às circunstâncias.
+Instâncias de comportamento abusivo, de assédio ou inaceitável podem ser relatadas em mensagem privada ao mantenedor pelo LinkedIn ([linkedin.com/in/manoanzi](https://www.linkedin.com/in/manoanzi/)). Todas as reclamações serão revisadas e investigadas e resultarão em uma resposta considerada necessária e apropriada às circunstâncias.
 
 ## Atribuição
 
